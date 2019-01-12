@@ -1,0 +1,7 @@
+hardware/images/*
+hardware/__pycache__
+*.pyc
+*.jpg
+*.png
+*.jpeg
+*.swp
