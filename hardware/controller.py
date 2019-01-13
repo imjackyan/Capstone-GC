@@ -5,7 +5,6 @@ from time import sleep
 import sys
 import camera_config
 import numpy as np
-import cv2
 
 class Controller():
 	'''
@@ -21,7 +20,21 @@ class Controller():
 		# set up pin modes on arduino
 		self.LOW = arduino.LOW
 		self.HIGH = arduino.HIGH
-		arduino.pinMode(8, arduino.OUTPUT) # example
+
+		self.outpins = {
+			"enA": 10,
+			"in1": 2,
+			"in2": 3
+		}
+		self.inpins = {
+
+		}
+
+		for k, p in enumerate(self.outpins.items()):
+			arduino.pinMode(p, arduino.OUTPUT)
+		for k, p in enumerate(self.inpins.items()):
+			arduino.pinMode(p, arduino.INPUT)
+
 		return arduino
 
 	def establish_connection(self):
@@ -60,10 +73,12 @@ class Controller():
 		return image
 	
 	# **************** Rover ****************
-	def move(self, direction):
-		self.arduino.digitalWrite(8, self.LOW)
+	def move(self, direction = 1):
+		self.arduino.digitalWrite(self.outpins["in1"], self.HIGH)
+		self.arduino.digitalWrite(self.outpins["in2"], self.LOW)
+		self.arduino.analogWrite(self.outpins["enA"], 100)
 
-	def turn(self, angle):
+	def turn(self, angle = 0):
 		self.arduino.digitalWrite(8, self.HIGH)
 
 	'''
