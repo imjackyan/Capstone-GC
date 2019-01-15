@@ -24,7 +24,10 @@ class Controller():
 		self.outpins = {
 			"enA": 10,
 			"in1": 2,
-			"in2": 3
+			"in2": 3,
+			"enB": 11,
+			"in3": 4,
+			"in4": 5
 		}
 		self.inpins = {
 
@@ -73,13 +76,52 @@ class Controller():
 		return image
 	
 	# **************** Rover ****************
-	def move(self, direction = 1):
-		self.arduino.digitalWrite(self.outpins["in1"], self.HIGH)
-		self.arduino.digitalWrite(self.outpins["in2"], self.LOW)
-		self.arduino.analogWrite(self.outpins["enA"], 100)
+	def move_l_wheel(self, direction = 1):
+		if(direction == 1): #Move forward
+			self.arduino.digitalWrite(self.outpins["in1"], self.HIGH)
+			self.arduino.digitalWrite(self.outpins["in2"], self.LOW)
 
-	def turn(self, angle = 0):
-		self.arduino.digitalWrite(8, self.HIGH)
+		else: #Move backwards
+			self.arduino.digitalWrite(self.outpins["in1"], self.LOW)
+			self.arduino.digitalWrite(self.outpins["in2"], self.HIGH)
+
+	def move_r_wheel(self, direction = 1)
+		if(direction == 1): #Move forward
+			self.arduino.digitalWrite(self.outpins["in3"], self.HIGH)
+			self.arduino.digitalWrite(self.outpins["in4"], self.LOW)
+
+		else: #Move backwards
+			self.arduino.digitalWrite(self.outpins["in3"], self.LOW)
+			self.arduino.digitalWrite(self.outpins["in4"], self.HIGH)
+
+
+	def move(self, direction = 1, speed = 200):
+		self.move_l_wheel(direction)
+		self.move_r_wheel(direction)
+
+		self.arduino.analogWrite(self.outpins["enA"], speed)
+		self.arduino.analogWrite(self.outpins["enB"], speed)
+
+	def turn(self, direction = 1, speed = 200):
+		#direction can either be 0 or 1
+		#0 : turn counter clockwise
+		#1 : turn clockwise
+		self.move_l_wheel(direction) #crappy implementation, either 0 or 1
+		self.move_r_wheel(direction+1) #crappy implementation, either 1 or 2
+
+		self.arduino.analogWrite(self.outpins["enA"], speed)
+		self.arduino.analogWrite(self.outpins["enB"], speed)
+
+
+	def stop(self):
+		self.arduino.digitalWrite(self.outpins["in1"], self.LOW)
+		self.arduino.digitalWrite(self.outpins["in2"], self.LOW)
+
+		self.arduino.digitalWrite(self.outpins["in3"], self.LOW)
+		self.arduino.digitalWrite(self.outpins["in4"], self.LOW)
+
+		self.arduino.analogWrite(self.outpins["enA"], 0)
+		self.arduino.analogWrite(self.outpins["enB"], 0)
 
 	'''
 	Destructor
