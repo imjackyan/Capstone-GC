@@ -5,3 +5,4 @@ hardware/__pycache__
 *.png
 *.jpeg
 *.swp
+.DS_Store
