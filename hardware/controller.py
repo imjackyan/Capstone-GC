@@ -33,10 +33,18 @@ class Controller():
 
 		}
 
-		for k, p in enumerate(self.outpins.items()):
-			arduino.pinMode(p, arduino.OUTPUT)
-		for k, p in enumerate(self.inpins.items()):
-			arduino.pinMode(p, arduino.INPUT)
+		arduino.pinMode(self.outpins["enA"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in1"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in2"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["enB"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in3"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in4"], arduino.OUTPUT)
+
+		# Not sure why below doens't work - TODO: fix later
+		# for k, p in enumerate(self.outpins.items()):
+		# 	arduino.pinMode(p, arduino.OUTPUT)
+		# for k, p in enumerate(self.inpins.items()):
+		# 	arduino.pinMode(p, arduino.INPUT)
 
 		return arduino
 
@@ -46,6 +54,7 @@ class Controller():
 			conn = SerialManager()
 			return ArduinoApi(connection = conn)
 		except:
+			print("Failed to establish connection with the Arduino")
 			sys.exit("Failed to establish connection with the Arduino")
 
 	def setup_camera(self):
@@ -55,6 +64,7 @@ class Controller():
 			camera.resolution = self.resolution
 			return camera
 		except:
+			print("Failed to set up camera")
 			sys.exit("Failed to set up camera")
 
 
@@ -64,17 +74,25 @@ class Controller():
 
 	# **************** Camera ****************
 	def capture(self, output = 'image', format = 'jpeg'):
-		self.camera.capture(output, format = format)
+		if self.camera != None:
+			self.camera.capture(output, format = format)
+		else:
+			print("Controller has no camera.")
 	def capture_continuous(self, output = 'image', format = 'jpeg'):
 		# returns an infinite iterator with output names = images + "-{counter}" 
-		return self.camera.capture_continuous(output + "-{counter}", format = format)
-
+		if self.camera != None:
+			return self.camera.capture_continuous(output + "-{counter}", format = format)
+		else:
+			print("Controller has no camera.")
 	def capture_opencv(self):
-		image = np.empty((self.resolution[1] * self.resolution[0] * 3,), dtype=np.uint8)
-		self.camera.capture(image, 'bgr')
-		image = image.reshape((self.resolution[1], self.resolution[0], 3))
-		return image
-	
+		if self.camera != None:
+			image = np.empty((self.resolution[1] * self.resolution[0] * 3,), dtype=np.uint8)
+			self.camera.capture(image, 'bgr')
+			image = image.reshape((self.resolution[1], self.resolution[0], 3))
+			return image
+		else:
+			print("Controller has no camera.")
+		
 	# **************** Rover ****************
 	def move_l_wheel(self, direction = 1):
 		if(direction == 1): #Move forward
@@ -85,7 +103,7 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in1"], self.LOW)
 			self.arduino.digitalWrite(self.outpins["in2"], self.HIGH)
 
-	def move_r_wheel(self, direction = 1)
+	def move_r_wheel(self, direction = 1):
 		if(direction == 1): #Move forward
 			self.arduino.digitalWrite(self.outpins["in3"], self.HIGH)
 			self.arduino.digitalWrite(self.outpins["in4"], self.LOW)
@@ -95,14 +113,14 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in4"], self.HIGH)
 
 
-	def move(self, direction = 1, speed = 200):
+	def move(self, direction = 1, speed = 255):
 		self.move_l_wheel(direction)
 		self.move_r_wheel(direction)
 
 		self.arduino.analogWrite(self.outpins["enA"], speed)
 		self.arduino.analogWrite(self.outpins["enB"], speed)
 
-	def turn(self, direction = 1, speed = 200):
+	def turn(self, direction = 1, speed = 255):
 		#direction can either be 0 or 1
 		#0 : turn counter clockwise
 		#1 : turn clockwise
@@ -127,4 +145,5 @@ class Controller():
 	Destructor
 	'''
 	def __del__(self):
-		self.camera.close()
+		if self.camera != None:
+			self.camera.close()
