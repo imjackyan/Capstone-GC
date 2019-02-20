@@ -12,7 +12,7 @@ class Controller():
 	'''
 	def __init__(self):
 		self.arduino = self.setup_arduino()
-		self.camera = self.setup_camera()
+		# self.camera = self.setup_camera()
 
 
 	def setup_arduino(self):
@@ -33,10 +33,17 @@ class Controller():
 
 		}
 
-		for k, p in enumerate(self.outpins.items()):
-			arduino.pinMode(p, arduino.OUTPUT)
-		for k, p in enumerate(self.inpins.items()):
-			arduino.pinMode(p, arduino.INPUT)
+		arduino.pinMode(self.outpins["enA"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in1"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in2"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["enB"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in3"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["in4"], arduino.OUTPUT)
+		# for k, p in enumerate(self.outpins.items()):
+		# 	arduino.pinMode(p, arduino.OUTPUT)
+		# for k, p in enumerate(self.inpins.items()):
+		# 	arduino.pinMode(p, arduino.INPUT)
+		print("Arduino initialized.")
 
 		return arduino
 
@@ -47,15 +54,18 @@ class Controller():
 			return ArduinoApi(connection = conn)
 		except:
 			sys.exit("Failed to establish connection with the Arduino")
+			return None
 
 	def setup_camera(self):
 		try:
 			camera = PiCamera()
 			self.resolution = (camera_config.resolution_width, camera_config.resolution_height)
 			camera.resolution = self.resolution
+			print("Camera initialized.")
 			return camera
 		except:
 			sys.exit("Failed to set up camera")
+			return None
 
 
 	'''
@@ -85,7 +95,7 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in1"], self.LOW)
 			self.arduino.digitalWrite(self.outpins["in2"], self.HIGH)
 
-	def move_r_wheel(self, direction = 1)
+	def move_r_wheel(self, direction = 1):
 		if(direction == 1): #Move forward
 			self.arduino.digitalWrite(self.outpins["in3"], self.HIGH)
 			self.arduino.digitalWrite(self.outpins["in4"], self.LOW)
@@ -95,14 +105,14 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in4"], self.HIGH)
 
 
-	def move(self, direction = 1, speed = 200):
+	def move(self, direction = 1, speed = 255):
 		self.move_l_wheel(direction)
 		self.move_r_wheel(direction)
 
 		self.arduino.analogWrite(self.outpins["enA"], speed)
 		self.arduino.analogWrite(self.outpins["enB"], speed)
 
-	def turn(self, direction = 1, speed = 200):
+	def turn(self, direction = 1, speed = 255):
 		#direction can either be 0 or 1
 		#0 : turn counter clockwise
 		#1 : turn clockwise
@@ -127,4 +137,5 @@ class Controller():
 	Destructor
 	'''
 	def __del__(self):
-		self.camera.close()
+		# if self.camera != None: self.camera.close()
+		pass
