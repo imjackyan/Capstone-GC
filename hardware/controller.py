@@ -27,10 +27,11 @@ class Controller():
 			"in2": 3,
 			"enB": 11,
 			"in3": 4,
-			"in4": 5
+			"in4": 5,
+			"trigPin": 12  
 		}
 		self.inpins = {
-
+			"echoPin": 13
 		}
 
 		arduino.pinMode(self.outpins["enA"], arduino.OUTPUT)
@@ -39,12 +40,15 @@ class Controller():
 		arduino.pinMode(self.outpins["enB"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in3"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in4"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["trigPin"], arduino.OUTPUT)		
+		arduino.pinMode(self.inpins["echoPin"], arduino.INPUT)
+
+		# Not sure why below doens't work - TODO: fix later
 		# for k, p in enumerate(self.outpins.items()):
 		# 	arduino.pinMode(p, arduino.OUTPUT)
 		# for k, p in enumerate(self.inpins.items()):
 		# 	arduino.pinMode(p, arduino.INPUT)
 		print("Arduino initialized.")
-
 		return arduino
 
 	def establish_connection(self):
@@ -53,6 +57,7 @@ class Controller():
 			conn = SerialManager()
 			return ArduinoApi(connection = conn)
 		except:
+			print("Failed to establish connection with the Arduino")
 			sys.exit("Failed to establish connection with the Arduino")
 			return None
 
@@ -64,6 +69,7 @@ class Controller():
 			print("Camera initialized.")
 			return camera
 		except:
+			print("Failed to set up camera")
 			sys.exit("Failed to set up camera")
 			return None
 
@@ -74,17 +80,25 @@ class Controller():
 
 	# **************** Camera ****************
 	def capture(self, output = 'image', format = 'jpeg'):
-		self.camera.capture(output, format = format)
+		if self.camera != None:
+			self.camera.capture(output, format = format)
+		else:
+			print("Controller has no camera.")
 	def capture_continuous(self, output = 'image', format = 'jpeg'):
 		# returns an infinite iterator with output names = images + "-{counter}" 
-		return self.camera.capture_continuous(output + "-{counter}", format = format)
-
+		if self.camera != None:
+			return self.camera.capture_continuous(output + "-{counter}", format = format)
+		else:
+			print("Controller has no camera.")
 	def capture_opencv(self):
-		image = np.empty((self.resolution[1] * self.resolution[0] * 3,), dtype=np.uint8)
-		self.camera.capture(image, 'bgr')
-		image = image.reshape((self.resolution[1], self.resolution[0], 3))
-		return image
-	
+		if self.camera != None:
+			image = np.empty((self.resolution[1] * self.resolution[0] * 3,), dtype=np.uint8)
+			self.camera.capture(image, 'bgr')
+			image = image.reshape((self.resolution[1], self.resolution[0], 3))
+			return image
+		else:
+			print("Controller has no camera.")
+		
 	# **************** Rover ****************
 	def move_l_wheel(self, direction = 1):
 		if(direction == 1): #Move forward
@@ -132,6 +146,18 @@ class Controller():
 
 		self.arduino.analogWrite(self.outpins["enA"], 0)
 		self.arduino.analogWrite(self.outpins["enB"], 0)
+
+	def get_distance(self):
+            #Send pulse stream to trig
+            self.arduino.digitalWrite(self.outpins["trigPin"], self.HIGH)
+            sleep(0.00001)
+            self.arduino.digitalWrite(self.outpins["trigPin"], self.LOW)
+
+            #calculate duration of pulse, and equivalent distance
+            duration = self.arduino.pulseIn(self.inpins["echoPin"], self.HIGH)
+            distance = duration * 0.017
+
+            return distance
 
 	'''
 	Destructor
