@@ -27,9 +27,11 @@ class Controller():
 			"in2": 3,
 			"enB": 11,
 			"in3": 4,
-			"in4": 5
+			"in4": 5,
+                        "trigPin": 12  
 		}
 		self.inpins = {
+                    "echoPin": 13
 
 		}
 
@@ -39,6 +41,11 @@ class Controller():
 		arduino.pinMode(self.outpins["enB"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in3"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in4"], arduino.OUTPUT)
+		arduino.pinMode(self.outpins["trigPin"], arduino.OUTPUT)
+		
+		arduino.pinMode(self.outpins["echoPin"], arduino.INPUT)
+
+
 
 		# Not sure why below doens't work - TODO: fix later
 		# for k, p in enumerate(self.outpins.items()):
@@ -141,9 +148,21 @@ class Controller():
 		self.arduino.analogWrite(self.outpins["enA"], 0)
 		self.arduino.analogWrite(self.outpins["enB"], 0)
 
+	def get_distance(self):
+            #Send pulse stream to trig
+            self.arduino.digitalWrite(self.outpins["trigPin"], self.HIGH)
+            sleep(0.00001)
+            self.arduino.digitalWrite(self.outpins["trigPin"], self.LOW)
+
+            #calculate duration of pulse, and equivalent distance
+            duration = self.arduino.pulseIn(self.inpins["trigPin"], HIGH)
+            distance = duration * 0.017
+
+            return distance
+
 	'''
 	Destructor
 	'''
 	def __del__(self):
 		if self.camera != None:
-			self.camera.close()
+self.camera.close()
