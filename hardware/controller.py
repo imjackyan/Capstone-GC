@@ -1,5 +1,5 @@
 from multiprocessing.connection import Listener
-from nanpy import (ArduinoApi, SerialManager)
+from nanpy import (ArduinoApi, SerialManager, Ultrasonic)
 from picamera import PiCamera
 from time import sleep
 import sys
@@ -12,7 +12,7 @@ class Controller():
 	'''
 	def __init__(self):
 		self.arduino = self.setup_arduino()
-		# self.camera = self.setup_camera()
+		self.camera = self.setup_camera()
 
 
 	def setup_arduino(self):
@@ -28,7 +28,7 @@ class Controller():
 			"enB": 11,
 			"in3": 4,
 			"in4": 5,
-			"trigPin": 12  
+			"trigPin": 12
 		}
 		self.inpins = {
 			"echoPin": 13
@@ -40,8 +40,8 @@ class Controller():
 		arduino.pinMode(self.outpins["enB"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in3"], arduino.OUTPUT)
 		arduino.pinMode(self.outpins["in4"], arduino.OUTPUT)
-		arduino.pinMode(self.outpins["trigPin"], arduino.OUTPUT)		
-		arduino.pinMode(self.inpins["echoPin"], arduino.INPUT)
+		# arduino.pinMode(self.outpins["trigPin"], arduino.OUTPUT)		
+		# arduino.pinMode(self.inpins["echoPin"], arduino.INPUT)
 
 		# Not sure why below doens't work - TODO: fix later
 		# for k, p in enumerate(self.outpins.items()):
@@ -55,9 +55,12 @@ class Controller():
 		# establish connection to the Arduino
 		try:
 			conn = SerialManager()
-			return ArduinoApi(connection = conn)
+			trig = 12
+			echo = 13
+			a = ArduinoApi(connection = conn)
+			self.ultrasonic = Ultrasonic(echo, trig, False, connection = conn)
+			return a
 		except:
-			print("Failed to establish connection with the Arduino")
 			sys.exit("Failed to establish connection with the Arduino")
 			return None
 
@@ -148,20 +151,12 @@ class Controller():
 		self.arduino.analogWrite(self.outpins["enB"], 0)
 
 	def get_distance(self):
-            #Send pulse stream to trig
-            self.arduino.digitalWrite(self.outpins["trigPin"], self.HIGH)
-            sleep(0.00001)
-            self.arduino.digitalWrite(self.outpins["trigPin"], self.LOW)
-
-            #calculate duration of pulse, and equivalent distance
-            duration = self.arduino.pulseIn(self.inpins["echoPin"], self.HIGH)
-            distance = duration * 0.017
-
-            return distance
+		distance = self.ultrasonic.get_distance()
+		return distance
 
 	'''
 	Destructor
 	'''
 	def __del__(self):
-		# if self.camera != None: self.camera.close()
-		pass
+		if self.camera != None: self.camera.close()
+		# pass

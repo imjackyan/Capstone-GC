@@ -15,7 +15,15 @@ from time import sleep
 
 # Initialize controller object
 controller = Controller()
+while 1:
 
+	d = controller.get_distance()
+
+	print(d)
+	sleep(0.5)
+# controller.capture('img.jpg')
+
+'''
 # img = controller.capture("image.jpg")
 
 # cv2_img = controller.capture_opencv()
@@ -84,3 +92,4 @@ for i in range(10):
 	sleep(0.021)
 	controller.stop()
 	sleep(0.1)
+'''
