@@ -18,7 +18,14 @@ cd $workspace_directory
 
 git clone https://github.com/nanpy/nanpy
 git clone https://github.com/nanpy/nanpy-firmware
-
+```
+Under nanpy-firmware/Nanpy/, edit cfg.h to enable desired features. We will enable Ultrasonic by setting it to 1.
+```
+// GW Robotics Classes
+#define USE_Ultrasonic                                          1
+```
+Then copy to Arduino sketchbook.
+```
 cp -avr nanpy-firmware/ ~/sketchbook/libraries
 
 sudo python3 nanpy/setup.py install
