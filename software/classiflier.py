@@ -1,4 +1,4 @@
-import numpy
+import from_project_dir_object_detection_runner_simple
 
 OBJECT_NONE = -1
 OBJECT_CANS = 0
@@ -12,8 +12,10 @@ class Classifier():
 		# takes in image in certain format (please advise)
 		# return a list of coordinates of objects. (-1,-1) if no object found
 		# also returns classification of the objects
+
+		boxes_list = from_project_dir_object_detection_runner_simple.process(img)
 		
-		return [([-1,-1], OBJECT_NONE)]
+		return boxes_list
 
 	def process_ditch(self, img):
 		# takes in image of certain format

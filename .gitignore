@@ -6,3 +6,8 @@ hardware/__pycache__
 *.jpeg
 *.swp
 .DS_Store
+
+output_inference_graph/*
+*.pb
+model_ckpt.*
+model_ckpt-*.*
