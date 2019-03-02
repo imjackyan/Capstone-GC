@@ -41,9 +41,9 @@ class MainLogic():
 		object_type = clr.OBJECT_NONE
 		for obj in objects:
 			if obj[1] != clr.OBJECT_NONE:
-				if obj[0][0] < self.resolution_width:
+				if obj[0][0] < self.resolution_width / 2:
 					direction = LEFT
-				elif obj[0][0] > self.resolution_width:
+				elif obj[0][0] > self.resolution_width / 2:
 					direction = RIGHT
 				else:
 					direction = FORWARD
