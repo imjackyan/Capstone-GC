@@ -1,4 +1,5 @@
 import from_project_dir_object_detection_runner_simple
+from objectdata import *
 
 OBJECT_NONE = -1
 OBJECT_CANS = 0
@@ -14,8 +15,19 @@ class Classifier():
 		# also returns classification of the objects
 
 		boxes_list = from_project_dir_object_detection_runner_simple.process(img)
-		
-		return boxes_list
+		objs = []
+		for box in boxes_list:
+			o = ObjectData()
+			o.x1 = box[0]
+			o.y1 = box[1]
+			o.x2 = box[2]
+			o.y2 = box[3]
+			o.width = abs(o.x2 - o.x1)
+			o.height = abs(o.y2 - o.y1)
+
+			objs.append(o)
+
+		return objs
 
 	def process_ditch(self, img):
 		# takes in image of certain format
