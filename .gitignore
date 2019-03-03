@@ -1,5 +1,6 @@
 hardware/images/*
 hardware/__pycache__
+software/output_inference_graph/*
 *.pyc
 *.jpg
 *.png
