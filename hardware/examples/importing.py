@@ -3,24 +3,25 @@ Using imports.
  - for when using Python for computer visions
 '''
 
-from time import sleep
+# from time import sleep
 import sys
 sys.path.insert(0, '/home/pi/Capstone-GC/hardware/')
 
 from controller import Controller
-import numpy as np
-import cv2
-from time import sleep
+# import numpy as np
+# import cv2
+# from time import sleep
 
 
 # Initialize controller object
 controller = Controller()
-while 1:
 
-	d = controller.get_distance()
+# while 1:
 
-	print(d)
-	sleep(0.5)
+# 	d = controller.get_distance()
+
+# 	print(d)
+# 	sleep(0.5)
 # controller.capture('img.jpg')
 
 '''

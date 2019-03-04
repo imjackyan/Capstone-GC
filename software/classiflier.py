@@ -6,9 +6,10 @@ import time
 import glob
 
 from PIL import Image
-
+from objectdata import ObjectData
 
 class Classifier():
+
 	OBJECT_NONE = -1
 	OBJECT_CANS = 0
 	OBJECT_PAPER = 1
@@ -23,7 +24,6 @@ class Classifier():
 	TEST_IMAGE_PATHS = glob.glob(os.path.join(PATH_TO_TEST_IMAGES_DIR, '*.jpg'))
 
 	def __init__(self, minimum_confidence=0.9):
-
 		self.minimum_confidence = minimum_confidence
 
 		print('Initializing model...')
@@ -57,10 +57,21 @@ class Classifier():
 
 		start_time = time.time()
 		boxes_list = self.detect_objects(img)
+		boxObj_list = []
+		for box in boxes_list:
+			o = ObjectData()
+			o.x1 = box[0]
+			o.y1 = box[1]
+			o.x2 = box[2]
+			o.y2 = box[3]
+			o.width = abs(o.x2 - o.x1)
+			o.height = abs(o.y2 - o.y1)
+
+			boxObj_list.append(o)
 		elapsed_time = time.time() - start_time
 		print('Elapsed time (s):', elapsed_time)
 		
-		return boxes_list
+		return boxObj_list
 
 	def process_ditch(self, img):
 		# takes in image of certain format
