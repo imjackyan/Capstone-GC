@@ -20,6 +20,7 @@ img = img.rotate(180)
 
 c.send_PIL(img)
 objs = c.connection_receive()
+print("NUMBER OF DETECTED OBJECTS: {}".format(len(objs)))
 for o in objs:
 	print("width: {}, height: {}".format(o.width, o.height))
 	print("Bounding box: ", o.x1, o.y1, o.x2, o.y2)

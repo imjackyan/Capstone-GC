@@ -43,8 +43,7 @@ class Classifier():
 			self.num_detections = self.detection_graph.get_tensor_by_name('num_detections:0')
 
 			print('Getting detection tensors...')
-			with tf.Session(graph=self.detection_graph) as sess:
-				self.sess = sess
+			self.sess = tf.Session(graph=self.detection_graph)
 
 		print('Done initialization.')
 

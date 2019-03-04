@@ -40,6 +40,7 @@ class Server:
     SOCKET_ADDRESS = (HOSTNAME, PORT)
 
     def __init__(self):
+        self.classifier = clr.Classifier()
         self.create_listen_socket()
         self.process_connections_forever()
 
@@ -82,8 +83,6 @@ class Server:
         connection, address_port = client
         print("-" * 72)
         print("Connection received from {}.".format(address_port))
-        
-        self.classifier = clr.Classifier()
         
         while True:
             try:
