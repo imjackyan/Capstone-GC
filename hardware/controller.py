@@ -158,5 +158,6 @@ class Controller():
 	Destructor
 	'''
 	def __del__(self):
+		self.stop();
 		if self.camera != None: self.camera.close()
 		# pass
