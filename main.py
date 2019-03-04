@@ -25,7 +25,7 @@ class MainLogic():
 		self.client = Client()
 		self.state = STATE_SEARCH
 		self.aura = 35 # objects within 35 units will be approached by rover
-		self.resolution_width = camera_config.resolution_width,
+		self.resolution_width = camera_config.resolution_width
 		self.resolution_height = camera_config.resolution_height
 
 	def get_distance(self):
