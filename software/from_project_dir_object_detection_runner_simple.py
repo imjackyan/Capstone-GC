@@ -1,3 +1,7 @@
+"""
+UNUSED
+"""
+
 import numpy as np
 import os
 import sys
@@ -114,6 +118,6 @@ if __name__ == '__main__':
             for image_path in TEST_IMAGE_PATHS:
                 print('Detecing for image:', image_path)
                 start_time = time.time()
-                detect_objects([], image_path=image_path)
+                detect_objects(None, image_path=image_path)
                 elapsed_time = time.time() - start_time
                 print('elapsed time:', elapsed_time)
