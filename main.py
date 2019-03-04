@@ -15,6 +15,10 @@ FORWARD = 2
 STATE_SEARCH = 0
 STATE_DITCH = 1
 
+OBJECT_NONE = -1
+OBJECT_CANS = 0
+OBJECT_PAPER = 1
+
 class MainLogic():
 	def __init__(self):
 		self.controller = Controller()
@@ -43,21 +47,24 @@ class MainLogic():
 			self.search_ditch()
 
 	def search_object(self):
+		# Step 0: Sweep with camera to find objects
+		# Turn by certain degree (~45?) when no object detected in image, repeat til object is found
+		objects = self.capture_and_process()
+		
 		# Step 1: Camera to identify object direction (left/right) and object classification
 		# Classifier API returns object type and object coordinates
-		objects = self.capture_and_process()
 		direction = LEFT
-		object_type = clr.OBJECT_NONE
+		object_type = OBJECT_NONE
 		for obj in objects:
-			if obj[1] != clr.OBJECT_NONE:
-				if obj[0][0] < self.resolution_width / 2:
+			if obj.object_type != OBJECT_NONE:
+				print(obj.x)
+				if obj.x < self.resolution_width / 2:
 					direction = LEFT
-				elif obj[0][0] > self.resolution_width / 2:
+				elif obj.x > self.resolution_width / 2:
 					direction = RIGHT
 				else:
 					direction = FORWARD
-				object_type = obj[1]
-
+				object_type = obj.object_type
 
 
 		# Step 2: Sweep with rover to identify objects (needs refinement)
@@ -75,7 +82,7 @@ class MainLogic():
 			if self.object_ahead(running_distances):
 				break
 
-			self.turn(direction = direction, delay = 0.01)
+			self.turn(direction = direction, delay = 0.02) # Delay needs to be adjusted based on motor battery life.
 
 
 		# Step 3: Go straight because object in front of rover
@@ -110,7 +117,7 @@ class MainLogic():
 		sMin = 1
 		factor = 2 # higher it is slower the movement
 		speed = (sMax-sMin) * distance / (factor * self.aura)
-		return speed if speed < sMax else sMax
+		return int(speed) if speed < sMax else sMax
 
 def main():
 	m = MainLogic()
