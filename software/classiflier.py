@@ -1,3 +1,4 @@
+# This API is run on the SERVER computer, not on the PI
 import numpy as np
 import os
 import sys
@@ -64,6 +65,8 @@ class Classifier():
 			o.y1 = box[1]
 			o.x2 = box[2]
 			o.y2 = box[3]
+			o.x = (o.x1 + o.x2) / 2
+			o.y = (o.y1 + o.y2) / 2
 			o.width = abs(o.x2 - o.x1)
 			o.height = abs(o.y2 - o.y1)
 

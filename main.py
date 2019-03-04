@@ -1,11 +1,12 @@
 import sys, time
+from PIL import Image
 
 sys.path.insert(0, 'hardware')
 from controller import Controller
 import camera_config
 
 sys.path.insert(0, 'software')
-import classiflier as clr
+from client import Client
 
 LEFT = 0 # Counter Clockwise
 RIGHT = 1 # Clockwise
@@ -17,7 +18,7 @@ STATE_DITCH = 1
 class MainLogic():
 	def __init__(self):
 		self.controller = Controller()
-		self.classifier = clr.Classifier()
+		self.client = Client()
 		self.state = STATE_SEARCH
 		self.aura = 35 # objects within 35 units will be approached by rover
 		self.resolution_width = camera_config.resolution_width,
@@ -25,6 +26,14 @@ class MainLogic():
 
 	def get_distance(self):
 		return abs(self.controller.get_distance())
+
+	def capture_and_process(self):
+		imgname = "image.jpg"
+		self.controller.capture(imgname)
+		img = Image.open(imgname)
+		img = img.rotate(180)
+		self.client.send_PIL(img)
+		return self.client.connection_receive()
 
 	# ************ loop methods ************
 	def loop(self):
@@ -36,7 +45,7 @@ class MainLogic():
 	def search_object(self):
 		# Step 1: Camera to identify object direction (left/right) and object classification
 		# Classifier API returns object type and object coordinates
-		objects = self.classifier.process(self.controller.capture_opencv())
+		objects = self.capture_and_process()
 		direction = LEFT
 		object_type = clr.OBJECT_NONE
 		for obj in objects:
