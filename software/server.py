@@ -65,21 +65,21 @@ class Server:
             sys.exit(1)
 
     def process_connections_forever(self):
-        while True:
-            try:
+        try:
+            while True:
                 # Block while waiting for accepting incoming
                 # connections. When one is accepted, pass the new
                 # (cloned) socket reference to the connection handler
                 # function.
                 self.connection_handler(self.socket.accept())
-            except Exception as msg:
-                print(msg)
-            except KeyboardInterrupt:
-                print()
-            finally:
-                self.socket.close()
-                sys.exit(1)
-            
+        except Exception as msg:
+            print(msg)
+        except KeyboardInterrupt:
+            print()
+        finally:
+            self.socket.close()
+            sys.exit(1)
+        
     def connection_handler(self, client):
         connection, address_port = client
         print("-" * 72)
