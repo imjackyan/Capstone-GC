@@ -23,6 +23,7 @@ import pickle
 from PIL import Image
 from objectdata import *
 import classiflier as clr
+from window import Window
 
 class Server:
     HOSTNAME = "0.0.0.0"
@@ -41,6 +42,7 @@ class Server:
 
     def __init__(self):
         self.classifier = clr.Classifier()
+        self.window = Window()
         self.create_listen_socket()
         self.process_connections_forever()
 
@@ -115,6 +117,12 @@ class Server:
                     send_bytes = pickle.dumps(objs)
                     print("Sending data object back to client..")
                     connection.sendall(send_bytes)
+
+                    print("Displaying new image")
+                    for obj in objs:
+                        self.window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)))
+                    self.window.display(recvd_img)
+
                 except Exception as msg:
                     print(msg)
             except KeyboardInterrupt:

@@ -60,10 +60,10 @@ class Classifier():
 		boxObj_list = []
 		for box in boxes_list:
 			o = ObjectData()
-			o.x1 = box[0]
-			o.y1 = box[1]
-			o.x2 = box[2]
-			o.y2 = box[3]
+			o.y1 = box[0]
+			o.x1 = box[1]
+			o.y2 = box[2]
+			o.x2 = box[3]
 			o.x = (o.x1 + o.x2) / 2
 			o.y = (o.y1 + o.y2) / 2
 			o.width = abs(o.x2 - o.x1)
@@ -119,10 +119,10 @@ class Classifier():
 		for i in range(np_boxes.shape[0]):
 			if np_scores is None or np_scores[i] > self.minimum_confidence:
 				box = list(np_boxes[i].tolist())
-				box[0] = int(box[0] * width)
-				box[2] = int(box[2] * width)
-				box[1] = int(box[1] * height)
-				box[3] = int(box[3] * height)
+				box[0] = int(box[0] * height) # y1
+				box[1] = int(box[1] * width) # x1
+				box[2] = int(box[2] * height) # y2
+				box[3] = int(box[3] * width) # x2
 				print('Box i', i, box)
 				boxes_list.append(box)
 
