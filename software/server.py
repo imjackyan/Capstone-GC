@@ -74,10 +74,11 @@ class Server:
                 self.connection_handler(self.socket.accept())
             except Exception as msg:
                 print(msg)
+            except KeyboardInterrupt:
+                print()
+            finally:
                 self.socket.close()
                 sys.exit(1)
-            except socket.error:
-                pass
             
     def connection_handler(self, client):
         connection, address_port = client
