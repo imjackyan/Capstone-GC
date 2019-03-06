@@ -42,7 +42,6 @@ class Server:
 
     def __init__(self):
         self.classifier = clr.Classifier()
-        self.window = Window()
         self.create_listen_socket()
         self.process_connections_forever()
 
@@ -66,25 +65,26 @@ class Server:
             sys.exit(1)
 
     def process_connections_forever(self):
-        try:
-            while True:
+        while True:
+            try:
                 # Block while waiting for accepting incoming
                 # connections. When one is accepted, pass the new
                 # (cloned) socket reference to the connection handler
                 # function.
                 self.connection_handler(self.socket.accept())
-        except Exception as msg:
-            print(msg)
-        except KeyboardInterrupt:
-            print()
-        finally:
-            self.socket.close()
-            sys.exit(1)
+            except Exception as msg:
+                print(msg)
+                self.socket.close()
+                sys.exit(1)
+            except socket.error:
+                pass
             
     def connection_handler(self, client):
         connection, address_port = client
         print("-" * 72)
         print("Connection received from {}.".format(address_port))
+        connection.setblocking(False)
+        _window = Window()
         
         while True:
             try:
@@ -99,8 +99,8 @@ class Server:
 
                 recvd_size = 0
                 recvd_bytes = b''
-                try:
-                    while recvd_size < msg_length:
+                while recvd_size < msg_length:
+                    try:
                         recvd = connection.recv(Server.RECV_BUFFER_SIZE)
                         if len(recvd) == 0:
                             print("Closing client connection ... ")
@@ -108,28 +108,45 @@ class Server:
                             break
                         recvd_size = recvd_size + len(recvd)
                         recvd_bytes = recvd_bytes + recvd
-                    print("receive ", len(recvd_bytes), "expected ", msg_length)
 
-                    recvd_img = pickle.loads(recvd_bytes) ## load pil image
+                        if recvd_size == msg_length:
+                            print("receive ", len(recvd_bytes), "expected ", msg_length)
 
-                    print("Image received, classifying..")
-                    objs = self.classifier.process(recvd_img)
-                    send_bytes = pickle.dumps(objs)
-                    print("Sending data object back to client..")
-                    connection.sendall(send_bytes)
+                            recvd_img = pickle.loads(recvd_bytes) ## load pil image
 
-                    print("Displaying new image")
-                    for obj in objs:
-                        self.window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)))
-                    self.window.display(recvd_img)
+                            print("Image received, classifying..")
+                            objs = self.classifier.process(recvd_img)
+                            send_bytes = pickle.dumps(objs)
+                            print("Sending data object back to client..")
+                            connection.sendall(send_bytes)
 
-                except Exception as msg:
-                    print(msg)
+                            print("Displaying new image")
+                            for obj in objs:
+                                _window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)))
+                            _window.display(recvd_img)
+
+                    except Exception as msg:
+                        print(msg)
+                    except socket.error:
+                        pass
+
             except KeyboardInterrupt:
                 print()
                 print("Closing client connection ... ")
                 connection.close()
                 break
+            except socket.error:
+                pass
+
+            try:
+                _window.update()
+            except:
+                pass
+
+        try:
+            _window.destroy()
+        except:
+            pass
 
 Server()
 

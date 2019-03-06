@@ -8,7 +8,7 @@ import tkinter as tk
 class Window():
 	def __init__(self):
 		self.window = tk.Tk()
-		self.window.title("Image")
+		self.window.title("Monitor")
 		self.label = None
 
 	def rectangle(self, PIL_img, coord, thickness = 3):
@@ -21,16 +21,20 @@ class Window():
 		draw.rectangle(((coord[0][0], coord[1][1] - thickness), coord[1]), fill = clr)
 
 	def display(self, PIL_img):
-		img = ImageTk.PhotoImage(PIL_img)
+		self.img = ImageTk.PhotoImage(PIL_img)
 
 		if self.label is None:
-			self.label = tk.Label(self.window, image = img)
+			self.label = tk.Label(self.window, image = self.img)
 			self.label.pack(side = tk.TOP , fill = tk.BOTH, expand = tk.YES)
 			self.window.update()
 
-		self.window.geometry("%dx%d" % (img.width(), img.height()))
-		self.label.configure(image = img)
+		self.window.geometry("%dx%d" % (self.img.width(), self.img.height()))
+		self.label.configure(image = self.img)
 		self.window.update()
+	def update(self):
+		self.window.update()
+	def destroy(self):
+		self.window.destroy()
 
 
 if __name__ == '__main__':
