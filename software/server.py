@@ -1,44 +1,28 @@
-#!/usr/bin/python3
-
-"""
-Echo Client and Server Classes
-
-T. D. Todd
-McMaster University
-
-to create a Client: "python EchoClientServer.py -r client" 
-to create a Server: "python EchoClientServer.py -r server" 
-
-or you can import the module into another file, e.g., 
-import EchoClientServer
-
-"""
-
-########################################################################
-
 import socket
 import argparse
-import sys
+import sys, os, time
 import pickle
 from PIL import Image
 from objectdata import *
 import classiflier as clr
 from window import Window
 
+LOGGING = False
+LOG_DIRECTORY = "log_images"
+
 class Server:
+    MESSAGE = "GCCAPSTONE CLASSIFIER"
+
     HOSTNAME = "0.0.0.0"
 
     # Set the server port to bind the listen socket to.
     PORT = 50000
+    D_PORT = 49999 # for discovery
 
     RECV_BUFFER_SIZE = 1024*1024
     MAX_CONNECTION_BACKLOG = 10
     
     MSG_ENCODING = "utf-8"
-
-    # Create server socket address. It is a tuple containing
-    # address/hostname and port.
-    SOCKET_ADDRESS = (HOSTNAME, PORT)
 
     def __init__(self):
         self.classifier = clr.Classifier()
@@ -47,37 +31,52 @@ class Server:
 
     def create_listen_socket(self):
         try:
-            # Create an IPv4 TCP socket.
+            # Set up TCP socket for classification
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            # Set socket layer socket options. This allows us to reuse
-            # the socket without waiting for any timeouts.
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            # Bind socket to socket address, i.e., IP address and port.
-            self.socket.bind(Server.SOCKET_ADDRESS)
-
-            # Set socket to listen state.
+            self.socket.bind((Server.HOSTNAME, Server.PORT))
             self.socket.listen(Server.MAX_CONNECTION_BACKLOG)
             print("Listening on port {} ...".format(Server.PORT))
+
+            # Set up UDP discovery service socket
+            self.d_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.d_socket.bind((Server.HOSTNAME, Server.D_PORT))
+            print("Broadcast port {}".format(Server.D_PORT))
         except Exception as msg:
             print(msg)
             sys.exit(1)
 
     def process_connections_forever(self):
         try:
+            self.socket.setblocking(False)
+            self.d_socket.setblocking(False)
+
             while True:
-                # Block while waiting for accepting incoming
-                # connections. When one is accepted, pass the new
-                # (cloned) socket reference to the connection handler
-                # function.
-                self.connection_handler(self.socket.accept())
+                # Check UDP for broadcast requests
+                try:
+                    data, address = self.d_socket.recvfrom(Server.RECV_BUFFER_SIZE)
+                    data = data.decode(Server.MSG_ENCODING)
+                    print("Broadcast received: {}".format(address))
+                    print("Key received: {}".format(data))
+                    if data == Server.MESSAGE:
+                        self.d_socket.sendto(Server.MESSAGE.encode(Server.MSG_ENCODING), address)
+                except socket.error:
+                    pass
+
+                # Process TCP connection, only allow 1 client
+                try:
+                    client = self.socket.accept()
+                    self.connection_handler(client)
+                except socket.error:
+                    pass
+
         except Exception as msg:
             print(msg)
         except KeyboardInterrupt:
             print()
         finally:
             self.socket.close()
+            self.d_socket.close()
             sys.exit(1)
         
     def connection_handler(self, client):
@@ -125,14 +124,18 @@ class Server:
                             for obj in objs:
                                 _window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)))
                             _window.display(recvd_img)
+                            recvd_img.save(os.path.join(LOG_DIRECTORY, "{}.jpg").format(time.strftime("%m%d-%H%M%S")))
 
-                    except Exception as msg:
-                        print(msg)
+                    except KeyboardInterrupt:
+                        print("Closing client connection ... ")
+                        connection.close()
+                        break
                     except socket.error:
                         pass
+                    except Exception as msg:
+                        print(msg)
 
             except KeyboardInterrupt:
-                print()
                 print("Closing client connection ... ")
                 connection.close()
                 break
@@ -149,7 +152,17 @@ class Server:
         except:
             pass
 
-Server()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--log', action="store_true", default=False, help="Log the pictures")
+    args = parser.parse_args()
+    if args.log:
+        print("Logging enabled.")
+        LOGGING = True
+        if not os.path.exists(LOG_DIRECTORY):
+            os.mkdir(LOG_DIRECTORY)
+
+    Server()
 
 
 
