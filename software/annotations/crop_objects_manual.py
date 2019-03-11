@@ -36,7 +36,7 @@ def record_boundary(imagepath, savefolder, imagename, maxsize=(480, 480)):
         else:
             click_tracker['c'] -= 1
 
-    def click_callback_can(event, object_name='can', color='red'):
+    def click_callback_obj(event, object_name='can', color='red'):
         print("clicked at", event.x, event.y)
         c = click_tracker['c']
 
@@ -122,11 +122,15 @@ def record_boundary(imagepath, savefolder, imagename, maxsize=(480, 480)):
         # panel.bind("<Button-1>", click_callback)
         # panel.pack(side="bottom", fill="both", expand="yes")
         # canvas.bind("-", lambda event: canvas.focus_set())
+        click_callback_can = lambda event: click_callback_obj(event, object_name='can', color='red')
+        click_callback_logo = lambda event: click_callback_obj(event, object_name='logo', color='blue')
 
         # Right click
         canvas.bind("<Button-1>", click_callback_can)
         # Middle click
         canvas.bind("<Button-2>", clear_callback)
+        # Left click
+        canvas.bind("<Button-3>", click_callback_logo)
         root.mainloop()
 
         # crop = image.crop((boundary['l'], boundary['t'], boundary['r'], boundary['b']))
@@ -226,7 +230,7 @@ def identify_object_boundaries(imagefolder, savefolder, samplesfile, statefile, 
 
 
 if __name__ == '__main__':
-    imagefolder = 'td3'
+    imagefolder = 'td5'
     savefolder = 'images'
     samplesfile = 'annotations/trainval.txt'
     # same as samplesfile, but with file extension so set operations can be performed
