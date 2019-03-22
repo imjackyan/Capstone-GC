@@ -17,16 +17,22 @@ STATE_DITCH = 1
 
 OBJECT_NONE = -1
 OBJECT_CANS = 0
-OBJECT_PAPER = 1
+OBJECT_PAPER = 2
+OBJECT_DITCH = 1
 
 ## cam config
 FOCAL_LENGTH = 3.6 #mm
 CAN_HEIGHT = 121 #mm
 CAN_WIDTH = 63 #mm
+DITCH_HEIGHT = 210
+DITCH_WIDTH = 190
 SENSOR_HEIGHT = 2.74
 SENSOR_WIDTH = 3.76
 
-DELAY_CAM_SHAKE = 0.2
+OBJ_DIM = {OBJECT_CANS:(CAN_HEIGHT, CAN_WIDTH), OBJECT_DITCH:(DITCH_HEIGHT, DITCH_WIDTH)}
+
+DELAY_CAM_SHAKE = 0.3
+REACHED_DISTANCE = 5 #
 
 INF = 100000
 
@@ -40,11 +46,18 @@ class MainLogic():
         self.resolution_height = camera_config.resolution_height
 
     def get_distance(self):
-        sum = 0
-        NUM_AVG = 5
-        for i in range(NUM_AVG):
-            sum = sum + abs(self.controller.get_distance())
-        return sum/NUM_AVG
+        # use sensor to detect dist to cans
+        # camera to detect dist to ditch
+        if self.cur_obj_type == OBJECT_CANS:
+            sum = 0
+            NUM_AVG = 5
+            for i in range(NUM_AVG):
+                sum = sum + abs(self.controller.get_distance())
+            return sum/NUM_AVG
+        elif self.cur_obj_type == OBJECT_DITCH:
+            time.sleep(DELAY_CAM_SHAKE)
+            objs = self.capture_and_process()
+            return self.dist_from_img(objs)
 
     def capture_and_process(self):
         imgname = "image.jpg"
@@ -64,17 +77,18 @@ class MainLogic():
     def object_direction(self, objects):
         min = INF
         direction = INF
-        self.coarse_threshold = 2000/self.get_distance() ## threshold to center is relativce to the distance
-        self.fine_threshold = 1000/self.get_distance()
-        print("Using threshold {} at dist {}".format(self.coarse_threshold, self.get_distance()))
+        self.coarse_threshold = 30#2000/self.get_distance() ## threshold to center is relativce to the distance
+        self.fine_threshold = 10#200/self.get_distance()
         self.curobj = None
         for obj in objects:
-            if obj.object_type != OBJECT_NONE:
+            print("detected object type : ",obj.object_type)
+            if obj.object_type == self.cur_obj_type:
+                print(obj.x, abs(obj.x - self.resolution_width / 2), min)
                 if abs(obj.x - self.resolution_width / 2) < min: # obj closest to center
                     min = abs(obj.x - self.resolution_width / 2)
-                    if obj.x  < self.resolution_width / 2 - self.coarse_threshold :
+                    if obj.x  < self.resolution_width / 2 - self.fine_threshold :
                         direction = LEFT
-                    elif obj.x  > self.resolution_width / 2 + self.coarse_threshold:
+                    elif obj.x  > self.resolution_width / 2 + self.fine_threshold:
                         direction = RIGHT
                     else:
                         direction = FORWARD
@@ -82,8 +96,9 @@ class MainLogic():
                     self.object_type = obj.object_type
         print("object is on {}".format(direction))
         if (direction == INF):
-            print("objection direction error, no obj found")
-        print("cur_obj {}".format({obj.x1, obj.x2, obj.y1, obj.y2}))
+            print("# obj{} no target found".format(len(objects)))
+        else:
+            print("cur_obj x1{} x2{} y1{} y2{} x{} y{}".format(obj.x1, obj.x2, obj.y1, obj.y2, obj.x, obj.y))
         return (direction, min)
         
     def dist_from_img(self, objs): ## for center obj only
@@ -93,21 +108,22 @@ class MainLogic():
         min = INF
         distance = INF
         for obj in objs:
-            if obj.object_type != OBJECT_NONE:
+            if obj.object_type == self.cur_obj_type:
                 if abs(obj.x - self.resolution_width / 2) < min: # obj closest to center
                     min = abs(obj.x - self.resolution_width / 2)
                     obj_pixel_height = obj.y2-obj.y1
                     obj_pixel_width = obj.x2-obj.x1
-        Dist_from_h = FOCAL_LENGTH * CAN_HEIGHT * self.resolution_height /(obj_pixel_height * SENSOR_HEIGHT)
-        Dist_from_w = FOCAL_LENGTH * CAN_WIDTH * self.resolution_width /(obj_pixel_width * SENSOR_WIDTH)
+        Dist_from_h = FOCAL_LENGTH * OBJ_DIM[self.cur_obj_type][0] * self.resolution_height /(obj_pixel_height * SENSOR_HEIGHT)
+        Dist_from_w = FOCAL_LENGTH * OBJ_DIM[self.cur_obj_type][1] * self.resolution_width /(obj_pixel_width * SENSOR_WIDTH)
         if (obj_pixel_height > 0.9 * self.resolution_height):## too close use width instead
             print("###use width###")
             distance = Dist_from_w
         else:
             distance = (Dist_from_h + Dist_from_w)/2
         print("using average : ", distance)
-        print("Using height : ", Dist_from_h)
-        print("Using width : ", Dist_from_w)
+        #print("Using height : ", Dist_from_h)
+        #print("Using width : ", Dist_from_w)
+        return distance
                     
     def search_object(self):
         state = 1
@@ -116,6 +132,7 @@ class MainLogic():
         self.direction = INF
         self.distance = INF
         self.object_type = OBJECT_NONE
+        self.cur_obj_type = OBJECT_CANS # start with cans
         END_State = 5
         
         while state != END_State:
@@ -124,24 +141,37 @@ class MainLogic():
                 print("state {}".format(state))
                 ratio = 0.01 # second per degree
                 objs = []
-                while len(objs) == 0:
+                self.direction = INF
+                while self.direction == INF:
                     print("capturing...")
                     objs = self.capture_and_process()
                     print(len(objs))
                     if len(objs) > 0:
                         self.direction, self.dist2cen = self.object_direction(objs)
-                        print("read direction {}".format(self.direction))
-                        if (self.direction == FORWARD):
-                            if (self.dist2cen < self.fine_threshold):#use diff
+                        if self.direction != INF: # if target objs found
+                            print("read direction {}".format(self.direction))
+                            if (self.direction == FORWARD):
                                 self.distance = self.get_distance()
-                                state = 4 ## go move forward
-                                print("got to state {}".format(state))
+                                if self.distance < REACHED_DISTANCE:
+                                    if self.cur_obj_type == OBJECT_CANS:
+                                        state = 1
+                                        self.cur_obj_type = OBJECT_DITCH
+                                        print("reached cans")
+                                    elif self.cur_obj_type == OBJECT_CANS:
+                                        state = 5
+                                        print("reached ditch")
+                                else:
+                                    state = 4 ## go move forward
+                                    print("got to state {}".format(state))
                             else:
-                                state = 3 ## use dist2cen to do small turn
-                                print("got to state {}".format(state))
+                                if abs(self.dist2cen) < self.coarse_threshold: # small turn
+                                    state = 3 ## use dist2cen to do small turn
+                                    print("got to state {}".format(state))
+                                else:
+                                    state = 2 ## big turn 
+                                    print("got to state {}".format(state))
                         else:
-                            state = 2 ## scan with sensor until hit objects
-                            print("got to state {}".format(state))
+                            self.turn(direction = LEFT, delay = ratio * 30)
                     else:
                         self.turn(direction = LEFT, delay = ratio * 30)
 
@@ -149,44 +179,70 @@ class MainLogic():
             # Sensor to identify distance to object by turning the rover towards left/right
             if state == 2: # in camera but not center forward (coarse adjust
                 time.sleep(DELAY_CAM_SHAKE)# avoid image blur
-                self.turn(self.direction, delay = self.dist2cen / 1000)
+                self.turn(direction = self.direction, delay = self.dist2cen / 1000)
                 # Use img info to identify turn params
                 state = 1 # check with camera again
                 
             # Step 3: verify if center fine adjust
+            # 
             if state == 3:
                 print("state {}".format(state))
                 time.sleep(DELAY_CAM_SHAKE)# avoid image blur
-                self.turn(self.direction, delay = 0.06)
+                self.turn(direction = self.direction, delay = 0.02)
+                
                 state = 1
                 
             # Step 4: Go straight because object in front of rover
             # Move forward at small intervals until object is within grasp of rover
+            # if object type is can, use sensor
+            # else use img to determine distance
             if state == 4:
                 print("state {}".format(state))
                 dist_log = []
                 count = 0
-                SENSOR_MISSED_TOLERANCE = 3
-                while self.distance > 5:
+                SENSOR_MISSED_TOLERANCE = 5
+                
+                self.distance = self.get_distance() ##****** for ditch need to seperate the img capture in this********
+                if self.distance > REACHED_DISTANCE*2:
+                    Max_movement = self.distance/2 ## move halfway then go state to verify if center
+                else:
+                    Max_movement = REACHED_DISTANCE ## should be good moving straight in close range
+                while self.distance > Max_movement:
                     self.move(direction = 1, speed = self.get_speed_from_distance(self.distance), delay = 0.1)
                     self.distance = self.get_distance()
                     dist_log.append(self.distance)
+                    print("get distance : ", self.distance)
+                    ## for sensor only
                     if(self.distance > sum(dist_log)/len(dist_log)):
                         count += 1
                     if(count == SENSOR_MISSED_TOLERANCE):
                         print("object out of center")
-                        #state = 1
-                #if count < SENSOR_MISSED_TOLERANCE:
-                state = 5 ## stop for now debug###
-                
-            # Step 6: use camera to go straight to the ditch (distance from img)
-            # assume ditch is center of img && capture img is called prior to it
-            if state == 6:
-                print(self.dist_from_img(objs))
+                        break
+                if self.distance <= REACHED_DISTANCE:
+                    if self.cur_obj_type == OBJECT_CANS:
+                        state = 1
+                        self.cur_obj_type = OBJECT_DITCH
+                        print("reached cans")
+                    else: 
+                        state = 5
+                        print("reached ditch")
+                else:
+                    print("Moved straight, now adjust angle")
+                    state = 1
 
     def search_ditch(self):
-        # TODO
-        return 0
+        state = 0
+        objs = []
+
+        while True:
+            if state == 0:
+                objs = self.capture_and_process()
+
+            if state == 1:
+                print(self.dist_from_img(objs))
+
+            if state == 10:
+                self.state = STATE_SEARCH
 
 
     # ************ supporting methods ************

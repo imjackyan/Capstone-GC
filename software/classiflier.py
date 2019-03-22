@@ -68,6 +68,7 @@ class Classifier():
 			o.y = (o.y1 + o.y2) / 2
 			o.width = abs(o.x2 - o.x1)
 			o.height = abs(o.y2 - o.y1)
+			o.object_type = box[4] - 1
 
 			boxObj_list.append(o)
 		elapsed_time = time.time() - start_time
@@ -111,6 +112,7 @@ class Classifier():
 		# print()
 		np_scores = np.squeeze(scores)
 		np_boxes = np.squeeze(boxes)
+		np_classes = np.squeeze(classes)
 		print('Number of boxes:', np_boxes.shape[0])
 		width, height = image.size
 
@@ -123,6 +125,8 @@ class Classifier():
 				box[1] = int(box[1] * width) # x1
 				box[2] = int(box[2] * height) # y2
 				box[3] = int(box[3] * width) # x2
+				box.append(int(np_classes[i]))
+
 				print('Box i', i, box)
 				boxes_list.append(box)
 

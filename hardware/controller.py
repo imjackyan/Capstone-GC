@@ -6,6 +6,12 @@ import sys
 import camera_config
 import numpy as np
 
+LEFT = 0
+RIGHT = 1
+FORWARD = 2
+BACKWARD = 3
+
+
 class Controller():
 	'''
 	Controller set up functions
@@ -122,17 +128,20 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in4"], self.HIGH)
 
 
-	def move(self, direction = 1, speed = 255):
+	def move(self, direction = FORWARD, speed = 255):
+		if direction > 1:
+			direction = direction - 2
+			
 		self.move_l_wheel(direction)
 		self.move_r_wheel(direction)
 
 		self.arduino.analogWrite(self.outpins["enA"], speed)
 		self.arduino.analogWrite(self.outpins["enB"], speed)
 
-	def turn(self, direction = 1, speed = 255):
+	def turn(self, direction = RIGHT, speed = 255):
 		#direction can either be 0 or 1
-		#0 : turn counter clockwise
-		#1 : turn clockwise
+		#0 : turn counter clockwise LEFT
+		#1 : turn clockwise RIGHT
 		self.move_l_wheel(direction) #crappy implementation, either 0 or 1
 		self.move_r_wheel(direction+1) #crappy implementation, either 1 or 2
 
