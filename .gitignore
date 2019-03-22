@@ -4,10 +4,13 @@ software/output_inference_graph/*
 software/__pycache__
 software/fails
 software/fails/*
+td*/
 *.pyc
 *.jpg
 *.png
 *.jpeg
+*.xml
+*.zip
 *.swp
 .DS_Store
 
