@@ -31,7 +31,7 @@ SENSOR_WIDTH = 3.76
 
 OBJ_DIM = {OBJECT_CANS:(CAN_HEIGHT, CAN_WIDTH), OBJECT_DITCH:(DITCH_HEIGHT, DITCH_WIDTH)}
 
-DELAY_CAM_SHAKE = 0.3
+DELAY_CAM_SHAKE = 0.5
 REACHED_DISTANCE = 5 #
 
 INF = 100000
@@ -207,6 +207,24 @@ class MainLogic():
                     Max_movement = self.distance/2 ## move halfway then go state to verify if center
                 else:
                     Max_movement = REACHED_DISTANCE ## should be good moving straight in close range
+                
+                # With set_speed method, we can change speed as the rover moves
+                # Instead of stopping it per interval, this way it seems more natural
+                self.controller.move(direction = 1, speed = self.get_speed_from_distance(self.distance))
+                while self.distance > Max_movement:                    
+                    self.distance = self.get_distance()
+                    self.controller.set_speed(self.get_speed_from_distance(self.distance))
+                    dist_log.append(self.distance)
+                    print("get distance : ", self.distance)
+                    ## for sensor only
+                    if(self.distance > sum(dist_log)/len(dist_log)):
+                        count += 1
+                    if(count == SENSOR_MISSED_TOLERANCE):
+                        print("object out of center")
+                        break
+                self.controller.stop()
+
+                """
                 while self.distance > Max_movement:
                     self.move(direction = 1, speed = self.get_speed_from_distance(self.distance), delay = 0.1)
                     self.distance = self.get_distance()
@@ -218,6 +236,8 @@ class MainLogic():
                     if(count == SENSOR_MISSED_TOLERANCE):
                         print("object out of center")
                         break
+                """
+
                 if self.distance <= REACHED_DISTANCE:
                     if self.cur_obj_type == OBJECT_CANS:
                         state = 1
