@@ -1,4 +1,4 @@
-from PIL import Image, ImageTk, ImageDraw
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 import sys
 import tkinter as tk
 
@@ -11,7 +11,7 @@ class Window():
 		self.window.title("Monitor")
 		self.label = None
 
-	def rectangle(self, PIL_img, coord, thickness = 3):
+	def rectangle(self, PIL_img, coord, item_id, thickness = 3):
 		# coord is a tuple of tuples ((x1,y1), (x2, y2))
 		clr = 'green'
 		draw = ImageDraw.Draw(PIL_img)
@@ -19,6 +19,7 @@ class Window():
 		draw.rectangle((coord[0], (coord[1][0], coord[0][1] + thickness)), fill = clr)
 		draw.rectangle(((coord[1][0] - thickness, coord[0][1]), coord[1]), fill = clr)
 		draw.rectangle(((coord[0][0], coord[1][1] - thickness), coord[1]), fill = clr)
+		draw.text(coord[0], str(item_id), fill = (255,255,0))
 
 	def display(self, PIL_img):
 		self.img = ImageTk.PhotoImage(PIL_img)

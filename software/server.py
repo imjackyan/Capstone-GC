@@ -122,7 +122,7 @@ class Server:
 
                             print("Displaying new image")
                             for obj in objs:
-                                _window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)))
+                                _window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)), obj.object_type)
                             _window.display(recvd_img)
                             recvd_img.save(os.path.join(LOG_DIRECTORY, "{}.jpg").format(time.strftime("%m%d-%H%M%S")))
 
