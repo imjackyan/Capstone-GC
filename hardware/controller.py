@@ -11,6 +11,8 @@ RIGHT = 1
 FORWARD = 2
 BACKWARD = 3
 
+MAX_SPEED = 255
+MIN_SPEED = 50
 
 class Controller():
 	'''
@@ -19,7 +21,7 @@ class Controller():
 	def __init__(self):
 		self.arduino = self.setup_arduino()
 		self.camera = self.setup_camera()
-
+		self.speed_factor = 0.5
 
 	def setup_arduino(self):
 		arduino = self.establish_connection()
@@ -109,6 +111,19 @@ class Controller():
 			print("Controller has no camera.")
 		
 	# **************** Rover ****************
+	def get_proper_speed(self, speed):
+		s = int(self.speed_factor * speed)
+		if s > MAX_SPEED:
+			s = MAX_SPEED
+		elif s < MIN_SPEED:
+			s = MIN_SPEED
+		return s
+
+	def set_speed(self, speed):
+		speed = self.get_proper_speed(speed)
+		self.arduino.analogWrite(self.outpins["enA"], speed)
+		self.arduino.analogWrite(self.outpins["enB"], speed)
+
 	def move_l_wheel(self, direction = 1):
 		if(direction == 1): #Move forward
 			self.arduino.digitalWrite(self.outpins["in1"], self.HIGH)
@@ -128,26 +143,21 @@ class Controller():
 			self.arduino.digitalWrite(self.outpins["in4"], self.HIGH)
 
 
-	def move(self, direction = FORWARD, speed = 255):
+	def move(self, direction = FORWARD, speed = MAX_SPEED):
 		if direction > 1:
 			direction = direction - 2
 			
 		self.move_l_wheel(direction)
 		self.move_r_wheel(direction)
+		self.set_speed(speed)
 
-		self.arduino.analogWrite(self.outpins["enA"], speed)
-		self.arduino.analogWrite(self.outpins["enB"], speed)
-
-	def turn(self, direction = RIGHT, speed = 255):
+	def turn(self, direction = RIGHT, speed = MAX_SPEED):
 		#direction can either be 0 or 1
 		#0 : turn counter clockwise LEFT
 		#1 : turn clockwise RIGHT
 		self.move_l_wheel(direction) #crappy implementation, either 0 or 1
 		self.move_r_wheel(direction+1) #crappy implementation, either 1 or 2
-
-		self.arduino.analogWrite(self.outpins["enA"], speed)
-		self.arduino.analogWrite(self.outpins["enB"], speed)
-
+		self.set_speed(speed)
 
 	def stop(self):
 		self.arduino.digitalWrite(self.outpins["in1"], self.LOW)

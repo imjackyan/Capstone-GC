@@ -4,6 +4,7 @@ software/output_inference_graph/*
 software/__pycache__
 software/fails
 software/fails/*
+deprecated/*
 td*/
 *.pyc
 *.jpg
