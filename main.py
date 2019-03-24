@@ -15,6 +15,14 @@ FORWARD = 2
 STATE_SEARCH = 0
 STATE_DITCH = 1
 
+STATE_NONE = 0
+STATE_MAIN = 2
+STATE_SWEEP = 3
+STATE_TURN_ATTEMPT = 4
+STATE_TURN_ADJUST = 5
+STATE_STRAIGHT = 6
+STATE_DUMMY = 7
+
 OBJECT_NONE = -1
 OBJECT_CANS = 0
 OBJECT_PAPER = 2
@@ -33,6 +41,8 @@ OBJ_DIM = {OBJECT_CANS:(CAN_HEIGHT, CAN_WIDTH), OBJECT_DITCH:(DITCH_HEIGHT, DITC
 
 DELAY_CAM_SHAKE = 0.5
 REACHED_DISTANCE = 5 #
+REACHED_DISTANCE_DITCH = 26 ## experimental for ditch
+CAN_LOST_THR = 15
 
 INF = 100000
 
@@ -55,6 +65,7 @@ class MainLogic():
                 sum = sum + abs(self.controller.get_distance())
             return sum/NUM_AVG
         elif self.cur_obj_type == OBJECT_DITCH:
+        
             time.sleep(DELAY_CAM_SHAKE)
             objs = self.capture_and_process()
             return self.dist_from_img(objs)
@@ -123,21 +134,21 @@ class MainLogic():
         print("using average : ", distance)
         #print("Using height : ", Dist_from_h)
         #print("Using width : ", Dist_from_w)
-        return distance
+        return distance/10 # tocm
                     
     def search_object(self):
-        state = 1
+        state = STATE_MAIN
         self.coarse_threshold = INF
         self.fine_threshold = INF
         self.direction = INF
         self.distance = INF
         self.object_type = OBJECT_NONE
         self.cur_obj_type = OBJECT_CANS # start with cans
-        END_State = 5
+        END_State = STATE_DUMMY
         
         while state != END_State:
             # Step 0: Sweep with camera to find objects
-            if state == 1:
+            if state == STATE_MAIN:
                 print("state {}".format(state))
                 ratio = 0.01 # second per degree
                 objs = []
@@ -146,6 +157,21 @@ class MainLogic():
                     print("capturing...")
                     objs = self.capture_and_process()
                     print(len(objs))
+                    
+                    if len(objs) > 0:
+                        if self.cur_obj_type == OBJECT_DITCH: ## for now
+                            self.cur_obj_type = OBJECT_CANS ##to use sensor
+                            x = self.get_distance()
+                            if x > CAN_LOST_THR:
+                                if x > 20:
+                                    self.cur_obj_type = OBJECT_CANS
+                                    print("****** LOST TRACK OF CAN *****")
+                                else:
+                                    self.move(direction = 1, delay = 0.05)
+                                    objs = self.capture_and_process()
+                                    print("feedforward adjust")
+                            else:
+                                self.cur_obj_type = OBJECT_DITCH
                     if len(objs) > 0:
                         self.direction, self.dist2cen = self.object_direction(objs)
                         if self.direction != INF: # if target objs found
@@ -154,21 +180,21 @@ class MainLogic():
                                 self.distance = self.get_distance()
                                 if self.distance < REACHED_DISTANCE:
                                     if self.cur_obj_type == OBJECT_CANS:
-                                        state = 1
+                                        state = STATE_MAIN
                                         self.cur_obj_type = OBJECT_DITCH
                                         print("reached cans")
                                     elif self.cur_obj_type == OBJECT_CANS:
-                                        state = 5
+                                        state = STATE_DUMMY
                                         print("reached ditch")
                                 else:
-                                    state = 4 ## go move forward
+                                    state = STATE_STRAIGHT ## go move forward
                                     print("got to state {}".format(state))
                             else:
                                 if abs(self.dist2cen) < self.coarse_threshold: # small turn
-                                    state = 3 ## use dist2cen to do small turn
+                                    state = STATE_TURN_ADJUST ## use dist2cen to do small turn
                                     print("got to state {}".format(state))
                                 else:
-                                    state = 2 ## big turn 
+                                    state = STATE_SWEEP ## big turn 
                                     print("got to state {}".format(state))
                         else:
                             self.turn(direction = LEFT, delay = ratio * 30)
@@ -177,45 +203,58 @@ class MainLogic():
 
             # Step 2: Sweep with rover to identify objects (needs refinement)
             # Sensor to identify distance to object by turning the rover towards left/right
-            if state == 2: # in camera but not center forward (coarse adjust
+            if state == STATE_SWEEP: # in camera but not center forward (coarse adjust
                 time.sleep(DELAY_CAM_SHAKE)# avoid image blur
-                self.turn(direction = self.direction, delay = self.dist2cen / 1000)
+                self.turn(direction = self.direction, delay = self.dist2cen / 800)
                 # Use img info to identify turn params
-                state = 1 # check with camera again
+                state = STATE_MAIN # check with camera again
                 
             # Step 3: verify if center fine adjust
             # 
-            if state == 3:
+            if state == STATE_TURN_ADJUST:
                 print("state {}".format(state))
                 time.sleep(DELAY_CAM_SHAKE)# avoid image blur
                 self.turn(direction = self.direction, delay = 0.02)
                 
-                state = 1
+                state = STATE_MAIN
                 
             # Step 4: Go straight because object in front of rover
             # Move forward at small intervals until object is within grasp of rover
             # if object type is can, use sensor
             # else use img to determine distance
-            if state == 4:
+            if state == STATE_STRAIGHT:
                 print("state {}".format(state))
                 dist_log = []
                 count = 0
                 SENSOR_MISSED_TOLERANCE = 5
                 
                 self.distance = self.get_distance() ##****** for ditch need to seperate the img capture in this********
-                if self.distance > REACHED_DISTANCE*2:
+                
+                if self.cur_obj_type == OBJECT_CANS:
+                    REACHED = REACHED_DISTANCE
+                else:
+                    REACHED = REACHED_DISTANCE_DITCH
+                if self.distance > REACHED*2:
                     Max_movement = self.distance/2 ## move halfway then go state to verify if center
                 else:
-                    Max_movement = REACHED_DISTANCE ## should be good moving straight in close range
+                    Max_movement = REACHED ## should be good moving straight in close range
                 
                 # With set_speed method, we can change speed as the rover moves
                 # Instead of stopping it per interval, this way it seems more natural
-                self.controller.move(direction = 1, speed = self.get_speed_from_distance(self.distance))
-                while self.distance > Max_movement:                    
+                while self.distance > Max_movement:          
+                    self.controller.move(direction = 1, speed = self.get_speed_from_distance(self.distance))
+                    if self.cur_obj_type == OBJECT_DITCH:
+                        sleep_duration = 0.008*self.distance
+                        if sleep_duration < 0.1:
+                            sleep_duration = 0.1
+                        print("sleep duration is "+str(sleep_duration))
+                        time.sleep(sleep_duration)
+                        self.controller.stop()
                     self.distance = self.get_distance()
                     self.controller.set_speed(self.get_speed_from_distance(self.distance))
                     dist_log.append(self.distance)
                     print("get distance : ", self.distance)
+                    
                     ## for sensor only
                     if(self.distance > sum(dist_log)/len(dist_log)):
                         count += 1
@@ -237,28 +276,35 @@ class MainLogic():
                         print("object out of center")
                         break
                 """
-
-                if self.distance <= REACHED_DISTANCE:
+                if self.distance <= REACHED:
                     if self.cur_obj_type == OBJECT_CANS:
-                        state = 1
+                        state = STATE_MAIN
                         self.cur_obj_type = OBJECT_DITCH
                         print("reached cans")
-                    else: 
-                        state = 5
+                        self.controller.speed_factor = 0.4
+                    else:
+                        state = STATE_DUMMY
                         print("reached ditch")
+                        self.cur_obj_type = OBJECT_CANS
+                        self.move(direction = 1, delay = 0.6) ## push through holes
+                        time.sleep(0.07)
+                        self.move(direction = 0, delay = 0.8) ## backoff to center
+                        self.controller.speed_factor = 0.5
+                        print("scan new cans")
+                        state = STATE_MAIN
                 else:
                     print("Moved straight, now adjust angle")
-                    state = 1
+                    state = STATE_MAIN
 
     def search_ditch(self):
-        state = 0
+        state = STATE_NONE
         objs = []
 
         while True:
-            if state == 0:
+            if state == STATE_NONE:
                 objs = self.capture_and_process()
 
-            if state == 1:
+            if state == STATE_MAIN:
                 print(self.dist_from_img(objs))
 
             if state == 10:
