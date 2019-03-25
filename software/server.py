@@ -1,5 +1,5 @@
 import socket
-import argparse
+import argparse, glob
 import sys, os, time
 import pickle
 from PIL import Image
@@ -124,7 +124,13 @@ class Server:
                             for obj in objs:
                                 _window.rectangle(recvd_img, ((obj.x1, obj.y1), (obj.x2, obj.y2)), obj.object_type)
                             _window.display(recvd_img)
-                            recvd_img.save(os.path.join(LOG_DIRECTORY, "{}.jpg").format(time.strftime("%m%d-%H%M%S")))
+                            if args.log:
+                                recvd_img.save(os.path.join(LOG_DIRECTORY, "{}.jpg").format(time.strftime("%m%d-%H%M%S")))
+                                logged_images = glob.glob(os.path.join(LOG_DIRECTORY, "*.jpg"))
+                                if len(logged_images) > args.max_backlog:
+                                    logged_images.sort()
+                                    for im in logged_images[:len(logged_images) - args.max_backlog]:
+                                        os.remove(im)
 
                     except KeyboardInterrupt:
                         print("Closing client connection ... ")
@@ -155,6 +161,7 @@ class Server:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--log', action="store_true", default=False, help="Log the pictures")
+    parser.add_argument('--max_backlog', default=100, help="Store maximum log")
     args = parser.parse_args()
     if args.log:
         print("Logging enabled.")
