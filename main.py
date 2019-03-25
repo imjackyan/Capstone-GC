@@ -13,11 +13,9 @@ LEFT = 0 # Counter Clockwise
 RIGHT = 1 # Clockwise
 FORWARD = 2
 
-STATE_SEARCH = 0
-STATE_DITCH = 1
-
 STATE_NONE = 0
 STATE_MAIN = 2
+STATE_LOST_OBJECT = 1
 STATE_SWEEP = 3
 STATE_TURN_ATTEMPT = 4
 STATE_TURN_ADJUST = 5
@@ -43,7 +41,7 @@ OBJ_DIM = {OBJECT_CANS:(CAN_HEIGHT, CAN_WIDTH), OBJECT_DITCH:(DITCH_HEIGHT, DITC
 DELAY_CAM_SHAKE = 0.5
 REACHED_DISTANCE = 5 #
 REACHED_DISTANCE_DITCH = 35 ## experimental for ditch
-CAN_LOST_THR = 15
+OBJ_LOST_THR = 15
 
 INF = 100000
 
@@ -51,21 +49,20 @@ class MainLogic():
     def __init__(self):
         self.controller = Controller()
         self.client = Client()
-        self.state = STATE_SEARCH
         self.aura = 35 # objects within 35 units will be approached by rover
         self.resolution_width = camera_config.resolution_width
         self.resolution_height = camera_config.resolution_height
 
-    def get_distance(self, objs = None):
+    def get_distance(self, objs = None, force_type = None):
         # use sensor to detect dist to cans
         # camera to detect dist to ditch
-        if self.cur_obj_type == OBJECT_CANS:
-            sum = 0
+        if self.cur_obj_type == OBJECT_CANS or force_type == OBJECT_CANS:
+            _sum = 0
             NUM_AVG = 5
             for i in range(NUM_AVG):
-                sum = sum + abs(self.controller.get_distance())
-            return sum/NUM_AVG
-        elif self.cur_obj_type == OBJECT_DITCH:
+                _sum = _sum + abs(self.controller.get_distance())
+            return _sum/NUM_AVG
+        elif self.cur_obj_type == OBJECT_DITCH or force_type == OBJECT_DITCH:
             if objs == None:
                 time.sleep(DELAY_CAM_SHAKE)
                 objs = self.capture_and_process()
@@ -82,10 +79,7 @@ class MainLogic():
 
     # ************ loop methods ************
     def loop(self):
-        if self.state == STATE_SEARCH:
-            self.search_object()
-        elif self.state == STATE_DITCH:
-            self.search_ditch()
+        self.search_object()
             
     def object_direction(self, objects):
         min = INF
@@ -156,32 +150,22 @@ class MainLogic():
                 ratio = 0.01 # second per degree
                 objs = []
                 self.direction = INF
-                # while self.direction == INF:
+
                 if True:
                     time.sleep(DELAY_CAM_SHAKE)# avoid image blur
                     objs = self.capture_and_process()
                     
-                    if 1:
-                        if self.cur_obj_type == OBJECT_DITCH: ## for now
-                            self.cur_obj_type = OBJECT_CANS ##to use sensor
-                            x = self.get_distance()
-                            if x > CAN_LOST_THR:
-                                if x > 20:
-                                    self.cur_obj_type = OBJECT_CANS
-                                    printf(" LOST TRACK OF CAN ")
-                                else:
-                                    self.move(direction = 1, delay = 0.02)
-                                    objs = self.capture_and_process()
-                                    printf("Feedforward adjust")
-                                    self.cur_obj_type = OBJECT_DITCH
-                            else:
-                                self.cur_obj_type = OBJECT_DITCH
-                    if len(objs) > 0:
+                    if self.cur_obj_type == OBJECT_DITCH: ## for now
+                        self.obj_distance = self.get_distance(force_type = OBJECT_CANS)
+                        if self.obj_distance > OBJ_LOST_THR:
+                            state = STATE_LOST_OBJECT
+
+                    if len(objs) > 0 and state == STATE_MAIN:
                         self.direction, self.dist2cen = self.object_direction(objs)
                         if self.direction != INF: # if target objs found
                             printf("Read direction {}".format(self.direction))
                             if (self.direction == FORWARD):
-                                self.distance = self.get_distance(objs)
+                                self.distance = self.get_distance(objs = objs)
                                 if self.distance < REACHED_DISTANCE:
                                     if self.cur_obj_type == OBJECT_CANS:
                                         state = STATE_MAIN
@@ -197,12 +181,23 @@ class MainLogic():
                                     state = STATE_TURN_ADJUST ## use dist2cen to do small turn
                                 else:
                                     # Object is far from center, turn larger
-                                    # state = STATE_TURN_ADJUST
                                     state = STATE_TURN_ATTEMPT
                         else:
                             state = STATE_SWEEP
                     else:
                         state = STATE_SWEEP
+
+            # Step 0.1: Object is lost while trying to find ditch
+            # Attempt to relocate object by moving back 
+            if state == STATE_LOST_OBJECT:
+                printf("[STATE] {}".format(state_to_str(state)))
+                if self.obj_distance > OBJ_LOST_THR + 5:
+                    self.cur_obj_type = OBJECT_CANS
+                    printf(" LOST TRACK OF OBJECT")
+                    self.move(direction = 0, delay = 0.04)
+                else:
+                    self.move(direction = 1, delay = 0.02)
+                state = STATE_MAIN
 
             # Step 2: Sweep with rover to identify objects (needs refinement)
             if state == STATE_SWEEP:
@@ -260,7 +255,7 @@ class MainLogic():
                 count = 0
                 SENSOR_MISSED_TOLERANCE = 5
                 
-                self.distance = self.get_distance(objs) ##****** for ditch need to seperate the img capture in this********
+                self.distance = self.get_distance(objs = objs) ##****** for ditch need to seperate the img capture in this********
                 
                 if self.cur_obj_type == OBJECT_CANS:
                     REACHED = REACHED_DISTANCE
@@ -330,20 +325,6 @@ class MainLogic():
                     printf("Moved straight, now adjusting angle")
                     state = STATE_MAIN
 
-    def search_ditch(self):
-        state = STATE_NONE
-        objs = []
-
-        while True:
-            if state == STATE_NONE:
-                objs = self.capture_and_process()
-
-            if state == STATE_MAIN:
-                printf(self.dist_from_img(objs))
-
-            if state == 10:
-                self.state = STATE_SEARCH
-
 
     # ************ supporting methods ************
     def turn(self, direction = 0, speed = 255, delay = 0.1):
@@ -374,6 +355,8 @@ def state_to_str(s):
         return "None"
     elif s == STATE_MAIN:
         return "Main"
+    elif s == STATE_LOST_OBJECT:
+        return "Lost Object"
     elif s == STATE_SWEEP:
         return "Sweep"
     elif s == STATE_TURN_ATTEMPT:
@@ -384,6 +367,7 @@ def state_to_str(s):
         return "Straight"
     elif s == STATE_DUMMY:
         return "Dummy"
+    return ""
 def obj_to_str(o):
     if o == OBJECT_CANS:
         return "Cans"
@@ -391,6 +375,7 @@ def obj_to_str(o):
         return "Paper"
     elif o == OBJECT_DITCH:
         return "Ditch"
+    return ""
 
 def printf(*args):
     s = " ".join(args)
