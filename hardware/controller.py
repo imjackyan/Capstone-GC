@@ -12,7 +12,7 @@ FORWARD = 2
 BACKWARD = 3
 
 MAX_SPEED = 255
-MIN_SPEED = 50
+MIN_SPEED = 60
 
 class Controller():
 	'''

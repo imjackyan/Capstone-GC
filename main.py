@@ -41,7 +41,7 @@ OBJ_DIM = {OBJECT_CANS:(CAN_HEIGHT, CAN_WIDTH), OBJECT_DITCH:(DITCH_HEIGHT, DITC
 
 DELAY_CAM_SHAKE = 0.5
 REACHED_DISTANCE = 5 #
-REACHED_DISTANCE_DITCH = 26 ## experimental for ditch
+REACHED_DISTANCE_DITCH = 35 ## experimental for ditch
 CAN_LOST_THR = 15
 
 INF = 100000
@@ -55,7 +55,7 @@ class MainLogic():
         self.resolution_width = camera_config.resolution_width
         self.resolution_height = camera_config.resolution_height
 
-    def get_distance(self):
+    def get_distance(self, objs = None):
         # use sensor to detect dist to cans
         # camera to detect dist to ditch
         if self.cur_obj_type == OBJECT_CANS:
@@ -65,9 +65,9 @@ class MainLogic():
                 sum = sum + abs(self.controller.get_distance())
             return sum/NUM_AVG
         elif self.cur_obj_type == OBJECT_DITCH:
-        
-            time.sleep(DELAY_CAM_SHAKE)
-            objs = self.capture_and_process()
+            if objs == None:
+                time.sleep(DELAY_CAM_SHAKE)
+                objs = self.capture_and_process()
             return self.dist_from_img(objs)
 
     def capture_and_process(self):
@@ -88,8 +88,8 @@ class MainLogic():
     def object_direction(self, objects):
         min = INF
         direction = INF
-        self.coarse_threshold = 30#2000/self.get_distance() ## threshold to center is relativce to the distance
-        self.fine_threshold = 10#200/self.get_distance()
+        self.coarse_threshold = 30 #2000/self.get_distance() ## threshold to center is relativce to the distance
+        self.fine_threshold = 10 #200/self.get_distance()
         self.curobj = None
         for obj in objects:
             print("detected object type : ",obj.object_type)
@@ -144,21 +144,24 @@ class MainLogic():
         self.distance = INF
         self.object_type = OBJECT_NONE
         self.cur_obj_type = OBJECT_CANS # start with cans
+
         END_State = STATE_DUMMY
         
         while state != END_State:
             # Step 0: Sweep with camera to find objects
             if state == STATE_MAIN:
-                print("state {}".format(state))
+                print("> Current state: {}".format(state))
                 ratio = 0.01 # second per degree
                 objs = []
                 self.direction = INF
-                while self.direction == INF:
+                # while self.direction == INF:
+                if True:
                     print("capturing...")
+                    time.sleep(DELAY_CAM_SHAKE)# avoid image blur
                     objs = self.capture_and_process()
                     print(len(objs))
                     
-                    if len(objs) > 0:
+                    if 1:
                         if self.cur_obj_type == OBJECT_DITCH: ## for now
                             self.cur_obj_type = OBJECT_CANS ##to use sensor
                             x = self.get_distance()
@@ -167,9 +170,10 @@ class MainLogic():
                                     self.cur_obj_type = OBJECT_CANS
                                     print("****** LOST TRACK OF CAN *****")
                                 else:
-                                    self.move(direction = 1, delay = 0.05)
+                                    self.move(direction = 1, delay = 0.02)
                                     objs = self.capture_and_process()
                                     print("feedforward adjust")
+                                    self.cur_obj_type = OBJECT_DITCH
                             else:
                                 self.cur_obj_type = OBJECT_DITCH
                     if len(objs) > 0:
@@ -177,15 +181,15 @@ class MainLogic():
                         if self.direction != INF: # if target objs found
                             print("read direction {}".format(self.direction))
                             if (self.direction == FORWARD):
-                                self.distance = self.get_distance()
+                                self.distance = self.get_distance(objs)
                                 if self.distance < REACHED_DISTANCE:
                                     if self.cur_obj_type == OBJECT_CANS:
                                         state = STATE_MAIN
                                         self.cur_obj_type = OBJECT_DITCH
                                         print("reached cans")
-                                    elif self.cur_obj_type == OBJECT_CANS:
-                                        state = STATE_DUMMY
-                                        print("reached ditch")
+                                    # elif self.cur_obj_type == OBJECT_DITCH:
+                                    #     state = STATE_DUMMY
+                                    #     print("reached ditch")
                                 else:
                                     state = STATE_STRAIGHT ## go move forward
                                     print("got to state {}".format(state))
@@ -194,26 +198,57 @@ class MainLogic():
                                     state = STATE_TURN_ADJUST ## use dist2cen to do small turn
                                     print("got to state {}".format(state))
                                 else:
-                                    state = STATE_SWEEP ## big turn 
+                                    # Object is far from center, turn larger
+                                    # state = STATE_TURN_ADJUST
+                                    state = STATE_TURN_ATTEMPT
                                     print("got to state {}".format(state))
                         else:
-                            self.turn(direction = LEFT, delay = ratio * 30)
+                            state = STATE_SWEEP
                     else:
-                        self.turn(direction = LEFT, delay = ratio * 30)
+                        state = STATE_SWEEP
 
             # Step 2: Sweep with rover to identify objects (needs refinement)
-            # Sensor to identify distance to object by turning the rover towards left/right
-            if state == STATE_SWEEP: # in camera but not center forward (coarse adjust
-                time.sleep(DELAY_CAM_SHAKE)# avoid image blur
-                self.turn(direction = self.direction, delay = self.dist2cen / 800)
-                # Use img info to identify turn params
+            if state == STATE_SWEEP:
+                print("> Current state: {}".format(state))
+                if self.cur_obj_type == OBJECT_DITCH:
+                    # target_delay = ratio * 45
+                    # current_delay = 0
+                    # self.controller.turn(direction = LEFT, speed = 80)
+                    # while current_delay < target_delay:
+                    #     time.sleep(0.05)
+                    #     current_delay += 0.05
+                    #     self.controller.set_speed(int(80 + (current_delay * (120/target_delay))))
+                    # self.controller.stop()
+                    self.turn(direction = LEFT, delay = ratio * 30, speed = 180)
+
+                else:
+                    self.turn(direction = LEFT, delay = ratio * 30)
+
                 state = STATE_MAIN # check with camera again
                 
-            # Step 3: verify if center fine adjust
-            # 
+            # Step 3.1: Use big turn to attemp to center object faster
+            if state == STATE_TURN_ATTEMPT:
+                print("> Current state: {}".format(state))
+                l1 = self.dist2cen
+                last_dir = self.direction
+                t1 = 10 * ratio
+                self.turn(direction = self.direction, delay = t1)
+
+                time.sleep(DELAY_CAM_SHAKE)
+                objs = self.capture_and_process()
+                self.direction, self.dist2cen = self.object_direction(objs)
+
+                if self.direction == last_dir:
+                    new_delay = self.dist2cen / l1 * t1
+                else:
+                    new_delay = self.dist2cen / (self.dist2cen + l1) * t1
+                self.turn(direction = self.direction, delay = new_delay)
+
+                state = STATE_MAIN
+
+            # Step 3.2: verify if center fine adjust
             if state == STATE_TURN_ADJUST:
-                print("state {}".format(state))
-                time.sleep(DELAY_CAM_SHAKE)# avoid image blur
+                print("> Current state: {}".format(state))
                 self.turn(direction = self.direction, delay = 0.02)
                 
                 state = STATE_MAIN
@@ -223,21 +258,22 @@ class MainLogic():
             # if object type is can, use sensor
             # else use img to determine distance
             if state == STATE_STRAIGHT:
-                print("state {}".format(state))
+                print("> Current state: {}".format(state))
                 dist_log = []
                 count = 0
                 SENSOR_MISSED_TOLERANCE = 5
                 
-                self.distance = self.get_distance() ##****** for ditch need to seperate the img capture in this********
+                self.distance = self.get_distance(objs) ##****** for ditch need to seperate the img capture in this********
                 
                 if self.cur_obj_type == OBJECT_CANS:
                     REACHED = REACHED_DISTANCE
+                    Max_movement = REACHED
                 else:
                     REACHED = REACHED_DISTANCE_DITCH
-                if self.distance > REACHED*2:
-                    Max_movement = self.distance/2 ## move halfway then go state to verify if center
-                else:
-                    Max_movement = REACHED ## should be good moving straight in close range
+                    if self.distance > REACHED*2:
+                        Max_movement = self.distance/2 ## move halfway then go state to verify if center
+                    else:
+                        Max_movement = REACHED ## should be good moving straight in close range
                 
                 # With set_speed method, we can change speed as the rover moves
                 # Instead of stopping it per interval, this way it seems more natural
@@ -281,7 +317,7 @@ class MainLogic():
                         state = STATE_MAIN
                         self.cur_obj_type = OBJECT_DITCH
                         print("reached cans")
-                        self.controller.speed_factor = 0.4
+                        # self.controller.speed_factor = 0.4
                     else:
                         state = STATE_DUMMY
                         print("reached ditch")
@@ -289,7 +325,7 @@ class MainLogic():
                         self.move(direction = 1, delay = 0.6) ## push through holes
                         time.sleep(0.07)
                         self.move(direction = 0, delay = 0.8) ## backoff to center
-                        self.controller.speed_factor = 0.5
+                        # self.controller.speed_factor = 0.5
                         print("scan new cans")
                         state = STATE_MAIN
                 else:
