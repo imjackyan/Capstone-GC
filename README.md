@@ -2,13 +2,10 @@
 ## Description
 4OI6 Capstone project. A garbage collecting rover.
 ## Installation
-### Getting OpenCV
+### Getting GPU Tensorflow on Server system
 ```
-pip3 install numpy
-pip3 install opencv-contrib-python-headless
+conda install tensorflow-gpu
 ```
-Now try importing cv2 in a Python console, you will likely get some import errors on missing dependencies. Follow [this link for solution](https://blog.piwheels.org/how-to-work-out-the-missing-dependencies-for-a-python-package/).
-
 ### Getting Nanpy
 [Video tutorial](https://www.youtube.com/watch?v=QumIhvYtRKQ)
 ```
@@ -31,6 +28,16 @@ cp -avr nanpy-firmware/ ~/sketchbook/libraries
 sudo python3 nanpy/setup.py install
 ```
 Upload the firmware onto the Arduino
-
+## Usage
+### Server
+To run the ML model on a CUDA capable machine, navitage to software/ folder and run
+```
+python server.py
+```
+### Pi
+To start the project, SSH/Putty into the Raspberry Pi and run
+```
+python main.py
+```
 ## Documentation
 See API within subfolders (hardware)
