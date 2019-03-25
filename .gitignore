@@ -6,6 +6,7 @@ software/fails
 software/fails/*
 deprecated/*
 td*/
+log.txt
 *.pyc
 *.jpg
 *.png
