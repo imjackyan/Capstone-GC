@@ -21,7 +21,9 @@ class Controller():
 	def __init__(self):
 		self.arduino = self.setup_arduino()
 		self.camera = self.setup_camera()
-		self.speed_factor = 0.45
+		self.speed_factor = 0.45 # student center
+		# self.speed_factor = 0.5 # capstone room
+		# self.speed_factor = 0.55 # jack's house
 
 	def setup_arduino(self):
 		arduino = self.establish_connection()

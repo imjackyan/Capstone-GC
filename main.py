@@ -32,8 +32,10 @@ OBJECT_DITCH = 1
 FOCAL_LENGTH = 3.6 #mm
 CAN_HEIGHT = 121 #mm
 CAN_WIDTH = 63 #mm
-DITCH_HEIGHT = 190
-DITCH_WIDTH = 190
+# DITCH_HEIGHT = 190
+# DITCH_WIDTH = 190
+DITCH_HEIGHT = 170
+DITCH_WIDTH = 170
 SENSOR_HEIGHT = 2.74
 SENSOR_WIDTH = 3.76
 
@@ -91,6 +93,7 @@ class MainLogic():
         direction = INF
         self.coarse_threshold = 30 #2000/self.get_distance() ## threshold to center is relativce to the distance
         self.fine_threshold = 10 #200/self.get_distance()
+        self.fine_threshold = 14
         self.curobj = None
         for obj in objects:
             printf("Detected object type : ", obj_to_str(obj.object_type))
@@ -159,7 +162,7 @@ class MainLogic():
 
             for o in objs:
                 if o.object_type != OBJECT_DITCH:
-                    p = self.resolution_width * 0.13
+                    p = self.resolution_width * 0.12
                     if o.y2 > (self.resolution_height * 0.95) and\
                     o.x1 > p and o.x2 < self.resolution_width - p:
                         return False
@@ -208,7 +211,11 @@ class MainLogic():
                                     state = STATE_STRAIGHT ## go move forward
                             else:
                                 if abs(self.dist2cen) < self.coarse_threshold: # small turn
-                                    state = STATE_TURN_ADJUST ## use dist2cen to do small turn
+                                    if  (self.distance < 30 and self.object_type != OBJECT_DITCH) or \
+                                        (self.distance < 50 and self.object_type == OBJECT_DITCH):
+                                        state = STATE_TURN_ADJUST ## use dist2cen to do small turn
+                                    else:
+                                        state = STATE_STRAIGHT
                                 else:
                                     # Object is far from center, turn larger
                                     state = STATE_TURN_ATTEMPT
@@ -245,7 +252,7 @@ class MainLogic():
                 else:
                     # self.turn(direction = LEFT, delay = ratio * 30)
                     start = time.time()
-                    self.turn(direction = LEFT, speed = 140, delay = 0)
+                    self.turn(direction = LEFT, speed = 165, delay = 0)
                     slope_buffer = []
                     l = 0
                     last_dis = 0

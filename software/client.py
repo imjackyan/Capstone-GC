@@ -17,7 +17,8 @@ class Client:
 
     def __init__(self):
         self.setup_sockets()
-        self.discover_server()
+        # self.discover_server()
+        self.SERVER_ADDRESS = "192.168.43.48"
         self.connect_to_server()
 
     def setup_sockets(self):
